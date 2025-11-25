@@ -16,7 +16,13 @@ app.use(express.json()); // req.body
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-  connectDB();
-});
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port: ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to connect to MongoDB: ", error);
+    process.exit(1);
+  });
