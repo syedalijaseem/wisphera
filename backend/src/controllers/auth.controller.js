@@ -3,6 +3,7 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { requiredEnv } from "../utils/env.js";
+import supabase from "../lib/supabase.js";
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -74,6 +75,10 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -102,4 +107,47 @@ export const login = async (req, res) => {
 export const logout = (_, res) => {
   res.cookie("jwt", "", { maxAge: 0 });
   res.status(200).json({ message: "Logged out successfully" });
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { profilePic } = req.body;
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile pic is required" });
+    }
+
+    const userId = req.user._id;
+
+    const base64Data = profilePic.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const fileName = `profile-${userId}-${Date.now()}.png`;
+
+    const { data, error } = await supabase.storage
+      .from("wisphera-profile-pics")
+      .upload(fileName, buffer, {
+        contentType: "image/png",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      return res.status(500).json({ message: "Failed to upload image" });
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("wisphera-profile-pics").getPublicUrl(fileName);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: publicUrl },
+      { new: true }
+    );
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
