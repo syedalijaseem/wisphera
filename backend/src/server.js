@@ -5,14 +5,18 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { connectDB } from "./lib/db.js";
+import { validateEnv } from "./utils/env.js";
 
 const app = express();
 
 dotenv.config();
 
+// Validate environment variables before starting server
+validateEnv();
+
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json()); // req.body
+app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
